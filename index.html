@@ -186,7 +186,7 @@ footer .amber{color:var(--gold);}
     <span class="cg-arrow">→</span>
   </a>
 
-  <footer>liga<span class="amber">.</span>futzone.com.br</footer>
+  <footer>ligadoscraques<span class="amber">.</span>futzone.com.br</footer>
 </div>
 
 <div id="overlay" onclick="closeModalBg(event)"><div class="modal" id="modal-content"></div></div>
@@ -437,7 +437,7 @@ function buildShareGrid(){
   return guessHistory.map(row=>row.map(g=>GROUP_EMOJI[g]).join("")).join("\n");
 }
 function buildShareText(){
-  return "🏆 Liga dos Craques #"+dayIndex()+"\n"+(won?"Resolvi":"Não consegui")+" com "+mistakes+" erro(s)\n\n"+buildShareGrid()+"\n\nliga.futzone.com.br";
+  return "🏆 Liga dos Craques #"+dayIndex()+"\n"+(won?"Resolvi":"Não consegui")+" com "+mistakes+" erro(s)\n\n"+buildShareGrid()+"\n\nligadoscraques.futzone.com.br";
 }
 
 // ── share (image) ──
@@ -468,7 +468,7 @@ function shareImage(){
     row.forEach(g=>{ctx.fillStyle=colors[g];roundRect(ctx,x,y,cell,cell,8);ctx.fill();x+=cell+gap;});
     y+=cell+gap;
   });
-  ctx.fillStyle="#7e9788";ctx.font="20px Arial";ctx.fillText("liga.futzone.com.br",W/2,H-40);
+  ctx.fillStyle="#7e9788";ctx.font="20px Arial";ctx.fillText("ligadoscraques.futzone.com.br",W/2,H-40);
   canvas.toBlob(blob=>{
     if(!blob){copy(buildShareText());return;}
     const file=new File([blob],"liga-dos-craques.png",{type:"image/png"});
