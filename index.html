@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Liga dos Craques — Futzone</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0b1411">
+<link rel="icon" href="icon-192.png">
+
+<meta name="description" content="Agrupe 16 craques em 4 grupos secretos. Um novo desafio de futebol todo dia.">
+<meta property="og:title" content="Liga dos Craques — Futzone">
+<meta property="og:description" content="Agrupe 16 craques em 4 grupos secretos. Um desafio novo todo dia.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1411;        /* tactics board dark green-black */
+  --panel:#11201a;
+  --panel2:#16291f;
+  --ink:#eef3ee;
+  --mute:#7e9788;
+  --chalk:#cfe3d6;
+  --line:#23463a;
+  --accent:#37d98a;    /* tactical chalk green */
+  --gold:#ffce47;
+  /* group colors (revealed) */
+  --g1:#e8c547;  --g1b:#3a3210;
+  --g2:#3fb56a;  --g2b:#0f2a1a;
+  --g3:#5b8def;  --g3b:#11203c;
+  --g4:#e0617f;  --g4b:#341019;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{background:var(--bg);color:var(--ink);font-family:'Roboto Mono',monospace;}
+body{max-width:560px;margin:0 auto;padding:0 14px 60px;min-height:100vh;}
+
+/* faint tactics grid */
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:42px 42px;mask-image:radial-gradient(circle at 50% 30%,#000 30%,transparent 80%);}
+.app{position:relative;z-index:1;}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 2px 8px;}
+.brand{display:flex;flex-direction:column;}
+.brand .top{font-family:'Oswald',sans-serif;font-weight:700;font-size:22px;letter-spacing:1px;line-height:1;text-transform:uppercase;}
+.brand .top span{color:var(--accent);}
+.brand .sub{font-size:10px;color:var(--mute);letter-spacing:2px;margin-top:3px;text-transform:uppercase;}
+.tools{display:flex;gap:6px;}
+.tool{width:34px;height:34px;border:1px solid var(--line);background:var(--panel);color:var(--mute);border-radius:7px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.tool:active{transform:translateY(1px);}
+
+.intro{text-align:center;color:var(--mute);font-size:12.5px;line-height:1.5;margin:6px 0 14px;}
+.intro b{color:var(--chalk);}
+
+/* solved groups appear here */
+.solved-groups{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.solved-group{border-radius:10px;padding:11px 12px;text-align:center;animation:popIn .4s ease;}
+@keyframes popIn{from{opacity:0;transform:scale(.9);}to{opacity:1;transform:scale(1);}}
+.solved-group .cat{font-family:'Oswald',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase;}
+.solved-group .members{font-size:11.5px;margin-top:3px;opacity:.85;}
+.sg1{background:var(--g1b);border:1px solid var(--g1);} .sg1 .cat{color:var(--g1);}
+.sg2{background:var(--g2b);border:1px solid var(--g2);} .sg2 .cat{color:var(--g2);}
+.sg3{background:var(--g3b);border:1px solid var(--g3);} .sg3 .cat{color:var(--g3);}
+.sg4{background:var(--g4b);border:1px solid var(--g4);} .sg4 .cat{color:var(--g4);}
+
+/* grid of tiles */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.tile{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:9px;
+  aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:4px;cursor:pointer;font-size:11px;line-height:1.15;font-weight:500;color:var(--chalk);
+  user-select:none;transition:transform .1s ease,background .15s ease,border-color .15s ease;
+  word-break:break-word;hyphens:auto;}
+.tile:active{transform:scale(.95);}
+.tile.sel{background:var(--accent);border-color:var(--accent);color:#04140b;font-weight:700;transform:scale(.97);}
+.tile.shake{animation:shake .4s;}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.tile.pop{animation:tilePop .3s;}
+@keyframes tilePop{50%{transform:scale(1.12);}}
+
+/* controls */
+.mistakes{display:flex;align-items:center;justify-content:center;gap:8px;margin:16px 0 12px;font-size:11px;color:var(--mute);letter-spacing:1px;text-transform:uppercase;}
+.dots{display:flex;gap:5px;}
+.mdot{width:11px;height:11px;border-radius:50%;background:var(--accent);transition:background .2s,transform .2s;}
+.mdot.lost{background:var(--line);transform:scale(.8);}
+.actions{display:flex;gap:8px;justify-content:center;}
+.btn{font-family:'Oswald',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;text-transform:uppercase;
+  padding:11px 18px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);}
+.btn:active{transform:translateY(1px);}
+.btn.primary{background:var(--accent);color:#04140b;border-color:var(--accent);}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+
+/* result */
+#result{display:none;text-align:center;margin-top:18px;}
+#result.show{display:block;animation:popIn .5s ease;}
+#result .verdict{font-family:'Oswald',sans-serif;font-weight:700;font-size:24px;text-transform:uppercase;letter-spacing:1px;}
+#result .verdict.win{color:var(--accent);}
+#result .verdict.lose{color:var(--g4);}
+#result .rgrid{font-size:18px;letter-spacing:3px;margin:12px 0;line-height:1.5;}
+.btn-row{display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap;}
+.next-in{font-size:11px;color:var(--mute);margin-top:12px;letter-spacing:1px;}
+
+/* cross-game */
+.cross-game{display:flex;align-items:center;gap:12px;margin-top:24px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel);text-decoration:none;color:inherit;}
+.cross-game .cg-ball{font-size:24px;}
+.cross-game .cg-text{flex:1;}
+.cross-game .cg-text b{display:block;font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:.5px;}
+.cross-game .cg-text span{font-size:11px;color:var(--mute);}
+.cross-game .cg-arrow{color:var(--accent);font-size:18px;}
+
+footer{text-align:center;margin-top:22px;font-size:11px;color:var(--mute);letter-spacing:1px;}
+footer .amber{color:var(--gold);}
+
+/* modal */
+#overlay{display:none;position:fixed;inset:0;background:rgba(4,8,6,.8);z-index:50;align-items:center;justify-content:center;padding:18px;}
+#overlay.show{display:flex;}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:420px;width:100%;padding:24px;position:relative;max-height:86vh;overflow-y:auto;}
+.modal h2{font-family:'Oswald',sans-serif;letter-spacing:1px;margin-bottom:14px;text-transform:uppercase;}
+.modal p{font-size:13px;line-height:1.6;color:var(--chalk);margin-bottom:10px;}
+.modal .close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--mute);font-size:24px;cursor:pointer;}
+.onb-cta{width:100%;background:var(--accent);color:#04140b;border:none;border-radius:8px;font-family:'Oswald',sans-serif;font-weight:700;font-size:16px;letter-spacing:1px;padding:13px;cursor:pointer;text-transform:uppercase;margin-top:8px;}
+
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:11px 18px;border-radius:8px;font-size:13px;opacity:0;transition:all .3s;z-index:60;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="top">LIGA DOS <span>CRAQUES</span></div>
+      <div class="sub">Futzone · desafio diário</div>
+    </div>
+    <div class="tools">
+      <button class="tool" onclick="showHelp()" title="Como jogar">?</button>
+      <button class="tool" id="btn-sound" onclick="toggleSound()" title="Som">🔊</button>
+    </div>
+  </header>
+
+  <p class="intro">Encontre os <b>4 grupos</b> de craques. Toque em 4 nomes que têm algo em comum e confirme. <b>4 erros</b> e acaba.</p>
+
+  <div class="solved-groups" id="solved-groups"></div>
+  <div class="grid" id="grid"></div>
+
+  <div id="play-controls">
+    <div class="mistakes">
+      Erros restantes
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-shuffle" onclick="shuffleGrid()">Embaralhar</button>
+      <button class="btn" id="btn-deselect" onclick="deselectAll()">Limpar</button>
+      <button class="btn primary" id="btn-submit" onclick="submitGuess()" disabled>Confirmar</button>
+    </div>
+  </div>
+
+  <div id="result">
+    <div class="verdict" id="verdict"></div>
+    <div class="rgrid" id="rgrid"></div>
+    <div class="btn-row">
+      <button class="btn primary" id="share">Compartilhar 🖼️</button>
+      <button class="btn" id="btn-again" style="display:none;" onclick="nextInfinite()">Jogar mais ⚽</button>
+    </div>
+    <div class="next-in" id="next-in"></div>
+  </div>
+
+  <a class="cross-game" href="https://craquedodia.futzone.com.br">
+    <span class="cg-ball">🕵️</span>
+    <span class="cg-text"><b>Jogue também Craque do Dia</b><span>Descubra o craque misterioso</span></span>
+    <span class="cg-arrow">→</span>
+  </a>
+
+  <footer>liga<span class="amber">.</span>futzone.com.br</footer>
+</div>
+
+<div id="overlay" onclick="closeModalBg(event)"><div class="modal" id="modal-content"></div></div>
+<div id="toast"></div>
+
+<script>
+const ROSTER=[{"n":"Pelé","nat":"Brasil","pos":"Atacante","dec":1950,"cl":["Santos","Cosmos"],"ach":["wc1970","wc1958"]},{"n":"Garrincha","nat":"Brasil","pos":"Ponta","dec":1950,"cl":["Botafogo"],"ach":["wc1958"]},{"n":"Zico","nat":"Brasil","pos":"Meia","dec":1970,"cl":["Flamengo","Udinese"]},{"n":"Sócrates","nat":"Brasil","pos":"Meia","dec":1970,"cl":["Corinthians","Fiorentina"]},{"n":"Rivelino","nat":"Brasil","pos":"Meia","dec":1960,"cl":["Corinthians","Fluminense"],"ach":["wc1970"]},{"n":"Romário","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["Vasco","PSV","Barcelona"],"ach":["wc1994"]},{"n":"Ronaldo","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Inter de Milão","Real Madrid","Barcelona","Corinthians"],"ach":["wc2002","ballon"]},{"n":"Ronaldinho Gaúcho","nat":"Brasil","pos":"Meia-atacante","dec":1990,"cl":["Grêmio","Barcelona","Milan","Flamengo"],"ach":["wc2002","ballon","ucl","liberta"]},{"n":"Rivaldo","nat":"Brasil","pos":"Meia-atacante","dec":1990,"cl":["Palmeiras","Barcelona"],"ach":["wc2002","ballon"]},{"n":"Kaká","nat":"Brasil","pos":"Meia","dec":2000,"cl":["São Paulo","Milan","Real Madrid"],"ach":["wc2002","ballon","ucl"]},{"n":"Cafu","nat":"Brasil","pos":"Lateral","dec":1990,"cl":["São Paulo","Roma","Milan"],"ach":["wc2002","wc1994"]},{"n":"Roberto Carlos","nat":"Brasil","pos":"Lateral","dec":1990,"cl":["Inter de Milão","Real Madrid"],"ach":["wc2002","ucl"]},{"n":"Neymar","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Santos","Barcelona","PSG","Al-Hilal"],"ach":["ucl","liberta"]},{"n":"Dida","nat":"Brasil","pos":"Goleiro","dec":1990,"cl":["Corinthians","Milan"],"ach":["wc2002"]},{"n":"Taffarel","nat":"Brasil","pos":"Goleiro","dec":1980,"cl":["Internacional","Galatasaray"],"ach":["wc1994"]},{"n":"Bebeto","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["Vasco","Flamengo","Deportivo"],"ach":["wc1994"]},{"n":"Carlos Alberto Torres","nat":"Brasil","pos":"Lateral","dec":1960,"cl":["Santos","Fluminense"],"ach":["wc1970"]},{"n":"Falcão","nat":"Brasil","pos":"Meia","dec":1970,"cl":["Internacional","Roma"]},{"n":"Tostão","nat":"Brasil","pos":"Atacante","dec":1960,"cl":["Cruzeiro"],"ach":["wc1970"]},{"n":"Jairzinho","nat":"Brasil","pos":"Ponta","dec":1960,"cl":["Botafogo"],"ach":["wc1970"]},{"n":"Gérson","nat":"Brasil","pos":"Meia","dec":1960,"cl":["Botafogo","Flamengo"]},{"n":"Adriano","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Flamengo","Inter de Milão"]},{"n":"Robinho","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Santos","Real Madrid","Milan"]},{"n":"Ronaldo Angelim","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Flamengo"]},{"n":"Diego Maradona","nat":"Argentina","pos":"Meia-atacante","dec":1970,"cl":["Boca Juniors","Napoli","Barcelona"]},{"n":"Lionel Messi","nat":"Argentina","pos":"Atacante","dec":2000,"cl":["Barcelona","PSG","Inter Miami"],"ach":["ballon","ucl"]},{"n":"Gabriel Batistuta","nat":"Argentina","pos":"Atacante","dec":1990,"cl":["Fiorentina","Roma"]},{"n":"Juan Román Riquelme","nat":"Argentina","pos":"Meia","dec":1990,"cl":["Boca Juniors","Villarreal"],"ach":["liberta"]},{"n":"Sergio Agüero","nat":"Argentina","pos":"Atacante","dec":2000,"cl":["Atlético de Madrid","Manchester City"]},{"n":"Ángel Di María","nat":"Argentina","pos":"Ponta","dec":2000,"cl":["Benfica","Real Madrid","PSG"]},{"n":"Daniel Passarella","nat":"Argentina","pos":"Zagueiro","dec":1970,"cl":["River Plate"]},{"n":"Mario Kempes","nat":"Argentina","pos":"Atacante","dec":1970,"cl":["Valencia"]},{"n":"Javier Zanetti","nat":"Argentina","pos":"Lateral","dec":1990,"cl":["Inter de Milão"]},{"n":"Emiliano Martínez","nat":"Argentina","pos":"Goleiro","dec":2010,"cl":["Aston Villa"]},{"n":"Hernán Crespo","nat":"Argentina","pos":"Atacante","dec":1990,"cl":["Parma","Inter de Milão","Chelsea"]},{"n":"Carlos Tévez","nat":"Argentina","pos":"Atacante","dec":2000,"cl":["Boca Juniors","Manchester United","Manchester City"],"ach":["liberta"]},{"n":"Zinedine Zidane","nat":"França","pos":"Meia","dec":1980,"cl":["Juventus","Real Madrid"],"ach":["ballon"]},{"n":"Thierry Henry","nat":"França","pos":"Atacante","dec":1990,"cl":["Arsenal","Barcelona"]},{"n":"Michel Platini","nat":"França","pos":"Meia","dec":1970,"cl":["Saint-Étienne","Juventus"],"ach":["ballon"]},{"n":"Kylian Mbappé","nat":"França","pos":"Atacante","dec":2010,"cl":["Monaco","PSG","Real Madrid"]},{"n":"Patrick Vieira","nat":"França","pos":"Meia","dec":1990,"cl":["Arsenal","Juventus"]},{"n":"Didier Deschamps","nat":"França","pos":"Meia","dec":1990,"cl":["Marselha","Juventus"]},{"n":"Karim Benzema","nat":"França","pos":"Atacante","dec":2000,"cl":["Lyon","Real Madrid"],"ach":["ballon","ucl"]},{"n":"Antoine Griezmann","nat":"França","pos":"Atacante","dec":2010,"cl":["Atlético de Madrid","Barcelona"]},{"n":"Fabien Barthez","nat":"França","pos":"Goleiro","dec":1990,"cl":["Marselha","Manchester United"]},{"n":"Marcel Desailly","nat":"França","pos":"Zagueiro","dec":1990,"cl":["Milan","Chelsea"]},{"n":"Robert Pirès","nat":"França","pos":"Meia","dec":1990,"cl":["Arsenal"]},{"n":"David Trezeguet","nat":"França","pos":"Atacante","dec":1990,"cl":["Monaco","Juventus"]},{"n":"Roberto Baggio","nat":"Itália","pos":"Meia-atacante","dec":1980,"cl":["Juventus","Milan"],"ach":["ballon"]},{"n":"Paolo Maldini","nat":"Itália","pos":"Zagueiro","dec":1980,"cl":["Milan"],"ach":["ucl"]},{"n":"Francesco Totti","nat":"Itália","pos":"Meia-atacante","dec":1990,"cl":["Roma"],"ach":["wc2006"]},{"n":"Alessandro Del Piero","nat":"Itália","pos":"Atacante","dec":1990,"cl":["Juventus"],"ach":["wc2006"]},{"n":"Gianluigi Buffon","nat":"Itália","pos":"Goleiro","dec":1990,"cl":["Parma","Juventus"],"ach":["wc2006"]},{"n":"Andrea Pirlo","nat":"Itália","pos":"Meia","dec":2000,"cl":["Milan","Juventus"],"ach":["wc2006","ucl"]},{"n":"Paolo Rossi","nat":"Itália","pos":"Atacante","dec":1980,"cl":["Juventus"]},{"n":"Franco Baresi","nat":"Itália","pos":"Zagueiro","dec":1980,"cl":["Milan"]},{"n":"Fabio Cannavaro","nat":"Itália","pos":"Zagueiro","dec":1990,"cl":["Parma","Juventus","Real Madrid"],"ach":["wc2006","ballon"]},{"n":"Alessandro Nesta","nat":"Itália","pos":"Zagueiro","dec":1990,"cl":["Lazio","Milan"],"ach":["wc2006"]},{"n":"Gianluca Vialli","nat":"Itália","pos":"Atacante","dec":1980,"cl":["Sampdoria","Juventus"]},{"n":"Roberto Mancini","nat":"Itália","pos":"Atacante","dec":1980,"cl":["Sampdoria","Lazio"]},{"n":"Christian Vieri","nat":"Itália","pos":"Atacante","dec":1990,"cl":["Inter de Milão","Lazio"]},{"n":"Filippo Inzaghi","nat":"Itália","pos":"Atacante","dec":1990,"cl":["Juventus","Milan"]},{"n":"Johan Cruyff","nat":"Holanda","pos":"Atacante","dec":1960,"cl":["Ajax","Barcelona"],"ach":["ballon"]},{"n":"Marco van Basten","nat":"Holanda","pos":"Atacante","dec":1980,"cl":["Ajax","Milan"],"ach":["ballon"]},{"n":"Ruud Gullit","nat":"Holanda","pos":"Meia-atacante","dec":1980,"cl":["PSV","Milan"],"ach":["ballon"]},{"n":"Frank Rijkaard","nat":"Holanda","pos":"Meia","dec":1980,"cl":["Ajax","Milan"]},{"n":"Dennis Bergkamp","nat":"Holanda","pos":"Atacante","dec":1990,"cl":["Ajax","Arsenal"]},{"n":"Ruud van Nistelrooy","nat":"Holanda","pos":"Atacante","dec":1990,"cl":["PSV","Manchester United","Real Madrid"]},{"n":"Robin van Persie","nat":"Holanda","pos":"Atacante","dec":2000,"cl":["Arsenal","Manchester United"]},{"n":"Arjen Robben","nat":"Holanda","pos":"Ponta","dec":2000,"cl":["Chelsea","Real Madrid","Bayern de Munique"],"ach":["ucl"]},{"n":"Wesley Sneijder","nat":"Holanda","pos":"Meia","dec":2000,"cl":["Ajax","Inter de Milão"],"ach":["ucl"]},{"n":"Edwin van der Sar","nat":"Holanda","pos":"Goleiro","dec":1990,"cl":["Ajax","Manchester United"],"ach":["ucl"]},{"n":"Clarence Seedorf","nat":"Holanda","pos":"Meia","dec":1990,"cl":["Ajax","Real Madrid","Milan"],"ach":["ucl"]},{"n":"Patrick Kluivert","nat":"Holanda","pos":"Atacante","dec":1990,"cl":["Ajax","Barcelona"]},{"n":"Franz Beckenbauer","nat":"Alemanha","pos":"Zagueiro","dec":1960,"cl":["Bayern de Munique","Cosmos"],"ach":["ballon"]},{"n":"Gerd Müller","nat":"Alemanha","pos":"Atacante","dec":1960,"cl":["Bayern de Munique"]},{"n":"Lothar Matthäus","nat":"Alemanha","pos":"Meia","dec":1980,"cl":["Bayern de Munique","Inter de Milão"],"ach":["ballon"]},{"n":"Jürgen Klinsmann","nat":"Alemanha","pos":"Atacante","dec":1980,"cl":["Inter de Milão","Tottenham","Bayern de Munique"]},{"n":"Oliver Kahn","nat":"Alemanha","pos":"Goleiro","dec":1990,"cl":["Bayern de Munique"]},{"n":"Michael Ballack","nat":"Alemanha","pos":"Meia","dec":1990,"cl":["Bayern de Munique","Chelsea"]},{"n":"Miroslav Klose","nat":"Alemanha","pos":"Atacante","dec":2000,"cl":["Werder Bremen","Bayern de Munique","Lazio"],"ach":["wc2014"]},{"n":"Manuel Neuer","nat":"Alemanha","pos":"Goleiro","dec":2000,"cl":["Schalke","Bayern de Munique"],"ach":["wc2014","ucl"]},{"n":"Philipp Lahm","nat":"Alemanha","pos":"Lateral","dec":2000,"cl":["Bayern de Munique"],"ach":["wc2014","ucl"]},{"n":"Bastian Schweinsteiger","nat":"Alemanha","pos":"Meia","dec":2000,"cl":["Bayern de Munique","Manchester United"],"ach":["wc2014","ucl"]},{"n":"Thomas Müller","nat":"Alemanha","pos":"Meia-atacante","dec":2010,"cl":["Bayern de Munique"],"ach":["wc2014"]},{"n":"Toni Kroos","nat":"Alemanha","pos":"Meia","dec":2010,"cl":["Bayern de Munique","Real Madrid"],"ach":["wc2014","ucl"]},{"n":"Andrés Iniesta","nat":"Espanha","pos":"Meia","dec":2000,"cl":["Barcelona"],"ach":["wc2010","ucl","euro"]},{"n":"Xavi","nat":"Espanha","pos":"Meia","dec":2000,"cl":["Barcelona"],"ach":["wc2010","ucl","euro"]},{"n":"Iker Casillas","nat":"Espanha","pos":"Goleiro","dec":2000,"cl":["Real Madrid","Porto"],"ach":["wc2010","ucl","euro"]},{"n":"Sergio Ramos","nat":"Espanha","pos":"Zagueiro","dec":2000,"cl":["Sevilla","Real Madrid","PSG"],"ach":["wc2010","ucl","euro"]},{"n":"Raúl","nat":"Espanha","pos":"Atacante","dec":1990,"cl":["Real Madrid"],"ach":["ucl"]},{"n":"Fernando Torres","nat":"Espanha","pos":"Atacante","dec":2000,"cl":["Atlético de Madrid","Liverpool","Chelsea"],"ach":["wc2010","euro"]},{"n":"David Villa","nat":"Espanha","pos":"Atacante","dec":2000,"cl":["Valencia","Barcelona"],"ach":["wc2010","euro"]},{"n":"Carles Puyol","nat":"Espanha","pos":"Zagueiro","dec":2000,"cl":["Barcelona"],"ach":["wc2010","euro"]},{"n":"Sergio Busquets","nat":"Espanha","pos":"Meia","dec":2000,"cl":["Barcelona"],"ach":["wc2010","ucl","euro"]},{"n":"David Silva","nat":"Espanha","pos":"Meia","dec":2000,"cl":["Valencia","Manchester City"],"ach":["euro"]},{"n":"Gerard Piqué","nat":"Espanha","pos":"Zagueiro","dec":2000,"cl":["Manchester United","Barcelona"],"ach":["wc2010","ucl","euro"]},{"n":"Fernando Hierro","nat":"Espanha","pos":"Zagueiro","dec":1990,"cl":["Real Madrid"]},{"n":"Cristiano Ronaldo","nat":"Portugal","pos":"Atacante","dec":2000,"cl":["Manchester United","Real Madrid","Juventus","Al-Nassr"],"ach":["ballon","ucl","euro"]},{"n":"Luís Figo","nat":"Portugal","pos":"Ponta","dec":1990,"cl":["Barcelona","Real Madrid"],"ach":["ballon","ucl"]},{"n":"Eusébio","nat":"Portugal","pos":"Atacante","dec":1960,"cl":["Benfica"]},{"n":"Rui Costa","nat":"Portugal","pos":"Meia","dec":1990,"cl":["Fiorentina","Milan"]},{"n":"Deco","nat":"Portugal","pos":"Meia","dec":2000,"cl":["Porto","Barcelona"]},{"n":"Pepe","nat":"Portugal","pos":"Zagueiro","dec":2000,"cl":["Porto","Real Madrid"]},{"n":"Bruno Fernandes","nat":"Portugal","pos":"Meia","dec":2010,"cl":["Sporting","Manchester United"]},{"n":"Bobby Charlton","nat":"Inglaterra","pos":"Meia","dec":1950,"cl":["Manchester United"]},{"n":"Steven Gerrard","nat":"Inglaterra","pos":"Meia","dec":2000,"cl":["Liverpool"]},{"n":"Frank Lampard","nat":"Inglaterra","pos":"Meia","dec":2000,"cl":["Chelsea"],"ach":["ucl"]},{"n":"David Beckham","nat":"Inglaterra","pos":"Meia","dec":1990,"cl":["Manchester United","Real Madrid","Galaxy"]},{"n":"Wayne Rooney","nat":"Inglaterra","pos":"Atacante","dec":2000,"cl":["Everton","Manchester United"]},{"n":"Alan Shearer","nat":"Inglaterra","pos":"Atacante","dec":1990,"cl":["Blackburn","Newcastle"]},{"n":"Gary Lineker","nat":"Inglaterra","pos":"Atacante","dec":1980,"cl":["Everton","Barcelona","Tottenham"]},{"n":"Harry Kane","nat":"Inglaterra","pos":"Atacante","dec":2010,"cl":["Tottenham","Bayern de Munique"]},{"n":"Paul Gascoigne","nat":"Inglaterra","pos":"Meia","dec":1980,"cl":["Tottenham","Lazio"]},{"n":"Peter Shilton","nat":"Inglaterra","pos":"Goleiro","dec":1970,"cl":["Nottingham Forest"]},{"n":"George Best","nat":"Irlanda do Norte","pos":"Ponta","dec":1960,"cl":["Manchester United"]},{"n":"Lev Yashin","nat":"União Soviética","pos":"Goleiro","dec":1950,"cl":["Dínamo de Moscou"]},{"n":"Andriy Shevchenko","nat":"Ucrânia","pos":"Atacante","dec":1990,"cl":["Dínamo de Kiev","Milan","Chelsea"],"ach":["ballon","ucl"]},{"n":"Hristo Stoichkov","nat":"Bulgária","pos":"Atacante","dec":1980,"cl":["CSKA Sofia","Barcelona"]},{"n":"Gheorghe Hagi","nat":"Romênia","pos":"Meia","dec":1980,"cl":["Real Madrid","Galatasaray"]},{"n":"Pavel Nedvěd","nat":"República Tcheca","pos":"Meia","dec":1990,"cl":["Lazio","Juventus"],"ach":["ballon"]},{"n":"Luka Modrić","nat":"Croácia","pos":"Meia","dec":2000,"cl":["Tottenham","Real Madrid"],"ach":["ballon","ucl"]},{"n":"Davor Šuker","nat":"Croácia","pos":"Atacante","dec":1990,"cl":["Sevilla","Real Madrid"]},{"n":"Robert Lewandowski","nat":"Polônia","pos":"Atacante","dec":2010,"cl":["Borussia Dortmund","Bayern de Munique","Barcelona"],"ach":["ucl"]},{"n":"Zbigniew Boniek","nat":"Polônia","pos":"Atacante","dec":1970,"cl":["Juventus"]},{"n":"Ferenc Puskás","nat":"Hungria","pos":"Atacante","dec":1950,"cl":["Real Madrid"]},{"n":"Hidetoshi Nakata","nat":"Japão","pos":"Meia","dec":1990,"cl":["Roma","Parma"]},{"n":"Park Ji-sung","nat":"Coreia do Sul","pos":"Meia","dec":2000,"cl":["PSV","Manchester United"]},{"n":"Son Heung-min","nat":"Coreia do Sul","pos":"Atacante","dec":2010,"cl":["Tottenham"]},{"n":"Didier Drogba","nat":"Costa do Marfim","pos":"Atacante","dec":2000,"cl":["Marselha","Chelsea"],"ach":["ucl"]},{"n":"Samuel Eto'o","nat":"Camarões","pos":"Atacante","dec":2000,"cl":["Barcelona","Inter de Milão"],"ach":["ucl"]},{"n":"Roger Milla","nat":"Camarões","pos":"Atacante","dec":1980,"cl":["Montpellier","Saint-Étienne"]},{"n":"George Weah","nat":"Libéria","pos":"Atacante","dec":1980,"cl":["Milan","PSG"],"ach":["ballon"]},{"n":"Mohamed Salah","nat":"Egito","pos":"Atacante","dec":2010,"cl":["Roma","Liverpool"],"ach":["ucl"]},{"n":"Carlos Valderrama","nat":"Colômbia","pos":"Meia","dec":1980,"cl":["Deportivo Cali","Junior"]},{"n":"James Rodríguez","nat":"Colômbia","pos":"Meia","dec":2010,"cl":["Porto","Monaco","Real Madrid"]},{"n":"Iván Zamorano","nat":"Chile","pos":"Atacante","dec":1990,"cl":["Real Madrid","Inter de Milão"]},{"n":"Iván Córdoba","nat":"Colômbia","pos":"Zagueiro","dec":1990,"cl":["Inter de Milão"]},{"n":"Alexis Sánchez","nat":"Chile","pos":"Atacante","dec":2010,"cl":["Udinese","Barcelona","Arsenal"]},{"n":"Arturo Vidal","nat":"Chile","pos":"Meia","dec":2010,"cl":["Juventus","Bayern de Munique"]},{"n":"Enzo Francescoli","nat":"Uruguai","pos":"Meia","dec":1980,"cl":["River Plate","Marselha"]},{"n":"Diego Forlán","nat":"Uruguai","pos":"Atacante","dec":2000,"cl":["Manchester United","Villarreal","Atlético de Madrid"]},{"n":"Luis Suárez","nat":"Uruguai","pos":"Atacante","dec":2000,"cl":["Ajax","Liverpool","Barcelona"],"ach":["ucl"]},{"n":"Edinson Cavani","nat":"Uruguai","pos":"Atacante","dec":2000,"cl":["Napoli","PSG"]},{"n":"Alfredo Di Stéfano","nat":"Argentina","pos":"Atacante","dec":1950,"cl":["Real Madrid"]},{"n":"Vinícius Júnior","nat":"Brasil","pos":"Ponta","dec":2010,"cl":["Flamengo","Real Madrid"]},{"n":"Rodrygo","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Santos","Real Madrid"]},{"n":"Casemiro","nat":"Brasil","pos":"Meia","dec":2010,"cl":["São Paulo","Real Madrid","Manchester United"]},{"n":"Thiago Silva","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Milan","PSG","Chelsea"],"ach":["ucl"]},{"n":"Marcelo","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Fluminense","Real Madrid"],"ach":["ucl"]},{"n":"Dani Alves","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Sevilla","Barcelona","Juventus"],"ach":["ucl"]},{"n":"Alisson","nat":"Brasil","pos":"Goleiro","dec":2010,"cl":["Internacional","Roma","Liverpool"]},{"n":"Ederson","nat":"Brasil","pos":"Goleiro","dec":2010,"cl":["Benfica","Manchester City"]},{"n":"Gabriel Jesus","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Palmeiras","Manchester City","Arsenal"]},{"n":"Philippe Coutinho","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Inter de Milão","Liverpool","Barcelona"]},{"n":"David Luiz","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Benfica","Chelsea","PSG"]},{"n":"Júlio César","nat":"Brasil","pos":"Goleiro","dec":2000,"cl":["Flamengo","Inter de Milão"]},{"n":"Maicon","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Monaco","Inter de Milão"]},{"n":"Lúcio","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Bayer Leverkusen","Bayern de Munique","Inter de Milão"],"ach":["wc2002"]},{"n":"Juninho Pernambucano","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Vasco","Lyon"]},{"n":"Alex","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Palmeiras","Cruzeiro","Fenerbahçe"]},{"n":"Edmundo","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Vasco","Palmeiras","Fiorentina"]},{"n":"Djalminha","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Palmeiras","Deportivo"]},{"n":"Marta","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Vasco","Umeå","Orlando Pride"]},{"n":"Formiga","nat":"Brasil","pos":"Meia","dec":1990,"cl":["São José","PSG"]},{"n":"Yaya Touré","nat":"Costa do Marfim","pos":"Meia","dec":2000,"cl":["Barcelona","Manchester City"]},{"n":"Jay-Jay Okocha","nat":"Nigéria","pos":"Meia","dec":1990,"cl":["PSG","Bolton"]},{"n":"Nwankwo Kanu","nat":"Nigéria","pos":"Atacante","dec":1990,"cl":["Ajax","Arsenal"]},{"n":"Michael Essien","nat":"Gana","pos":"Meia","dec":2000,"cl":["Lyon","Chelsea"]},{"n":"Riyad Mahrez","nat":"Argélia","pos":"Ponta","dec":2010,"cl":["Leicester","Manchester City"]},{"n":"Sadio Mané","nat":"Senegal","pos":"Atacante","dec":2010,"cl":["Liverpool","Bayern de Munique"],"ach":["ucl"]},{"n":"Mohamed Aboutrika","nat":"Egito","pos":"Meia","dec":2000,"cl":["Al Ahly"]},{"n":"Abedi Pelé","nat":"Gana","pos":"Meia","dec":1980,"cl":["Marselha"]},{"n":"Andriy Arshavin","nat":"Rússia","pos":"Meia","dec":2000,"cl":["Zenit","Arsenal"]},{"n":"Hakan Şükür","nat":"Turquia","pos":"Atacante","dec":1990,"cl":["Galatasaray"]},{"n":"Georgi Kinkladze","nat":"Geórgia","pos":"Meia","dec":1990,"cl":["Manchester City"]},{"n":"Mladen Petrić","nat":"Croácia","pos":"Atacante","dec":2000,"cl":["Hamburgo"]},{"n":"Robert Prosinečki","nat":"Croácia","pos":"Meia","dec":1990,"cl":["Real Madrid","Barcelona"]},{"n":"Hugo Sánchez","nat":"México","pos":"Atacante","dec":1980,"cl":["Real Madrid"]},{"n":"Rafa Márquez","nat":"México","pos":"Zagueiro","dec":2000,"cl":["Monaco","Barcelona"]},{"n":"Cuauhtémoc Blanco","nat":"México","pos":"Meia-atacante","dec":1990,"cl":["América"]},{"n":"Guillermo Ochoa","nat":"México","pos":"Goleiro","dec":2000,"cl":["América","Standard"]},{"n":"Keylor Navas","nat":"Costa Rica","pos":"Goleiro","dec":2010,"cl":["Levante","Real Madrid","PSG"]},{"n":"Bryan Ruiz","nat":"Costa Rica","pos":"Meia","dec":2010,"cl":["Fulham","Sporting"]},{"n":"Landon Donovan","nat":"Estados Unidos","pos":"Meia","dec":2000,"cl":["Galaxy","Everton"]},{"n":"Clint Dempsey","nat":"Estados Unidos","pos":"Atacante","dec":2000,"cl":["Fulham","Tottenham"]},{"n":"Tim Howard","nat":"Estados Unidos","pos":"Goleiro","dec":2000,"cl":["Manchester United","Everton"]},{"n":"Zlatan Ibrahimović","nat":"Suécia","pos":"Atacante","dec":2000,"cl":["Ajax","Inter de Milão","Milan","PSG","Manchester United"]},{"n":"Henrik Larsson","nat":"Suécia","pos":"Atacante","dec":1990,"cl":["Celtic","Barcelona"]},{"n":"Eric Cantona","nat":"França","pos":"Atacante","dec":1990,"cl":["Leeds","Manchester United"]},{"n":"Ryan Giggs","nat":"País de Gales","pos":"Ponta","dec":1990,"cl":["Manchester United"],"ach":["ucl"]},{"n":"Gareth Bale","nat":"País de Gales","pos":"Ponta","dec":2000,"cl":["Tottenham","Real Madrid"]},{"n":"Roy Keane","nat":"Irlanda","pos":"Meia","dec":1990,"cl":["Manchester United"]},{"n":"Petr Čech","nat":"República Tcheca","pos":"Goleiro","dec":2000,"cl":["Chelsea","Arsenal"],"ach":["ucl"]},{"n":"Jan Oblak","nat":"Eslovênia","pos":"Goleiro","dec":2010,"cl":["Atlético de Madrid"]},{"n":"Edin Džeko","nat":"Bósnia","pos":"Atacante","dec":2000,"cl":["Wolfsburg","Manchester City","Roma"]},{"n":"Kevin De Bruyne","nat":"Bélgica","pos":"Meia","dec":2010,"cl":["Wolfsburg","Manchester City"]},{"n":"Eden Hazard","nat":"Bélgica","pos":"Ponta","dec":2010,"cl":["Lille","Chelsea","Real Madrid"]},{"n":"Romelu Lukaku","nat":"Bélgica","pos":"Atacante","dec":2010,"cl":["Anderlecht","Inter de Milão","Chelsea"]},{"n":"Vincent Kompany","nat":"Bélgica","pos":"Zagueiro","dec":2000,"cl":["Hamburgo","Manchester City"]},{"n":"Jan Vertonghen","nat":"Bélgica","pos":"Zagueiro","dec":2010,"cl":["Ajax","Tottenham"]},{"n":"Virgil van Dijk","nat":"Holanda","pos":"Zagueiro","dec":2010,"cl":["Southampton","Liverpool"],"ach":["ucl"]},{"n":"Erling Haaland","nat":"Noruega","pos":"Atacante","dec":2010,"cl":["Borussia Dortmund","Manchester City"]},{"n":"Nílton Santos","nat":"Brasil","pos":"Lateral","dec":1950,"cl":["Botafogo"],"ach":["wc1958"]},{"n":"Djalma Santos","nat":"Brasil","pos":"Lateral","dec":1950,"cl":["Portuguesa","Palmeiras"],"ach":["wc1958"]},{"n":"Didi","nat":"Brasil","pos":"Meia","dec":1950,"cl":["Botafogo","Fluminense"],"ach":["wc1958"]},{"n":"Vavá","nat":"Brasil","pos":"Atacante","dec":1950,"cl":["Vasco","Atlético-MG"],"ach":["wc1958"]},{"n":"Zagallo","nat":"Brasil","pos":"Ponta","dec":1950,"cl":["Flamengo","Botafogo"],"ach":["wc1958"]},{"n":"Gilmar","nat":"Brasil","pos":"Goleiro","dec":1950,"cl":["Corinthians","Santos"],"ach":["wc1958"]},{"n":"Nilton de Sordi","nat":"Brasil","pos":"Zagueiro","dec":1950,"cl":["São Paulo"]},{"n":"Zito","nat":"Brasil","pos":"Meia","dec":1950,"cl":["Santos"],"ach":["wc1958"]},{"n":"Coutinho (Santos)","nat":"Brasil","pos":"Atacante","dec":1950,"cl":["Santos"]},{"n":"Ademir da Guia","nat":"Brasil","pos":"Meia","dec":1960,"cl":["Palmeiras"]},{"n":"Gérson de Oliveira","nat":"Brasil","pos":"Meia","dec":1960,"cl":["Botafogo","São Paulo"],"ach":["wc1970"]},{"n":"Roberto Dinamite","nat":"Brasil","pos":"Atacante","dec":1970,"cl":["Vasco"]},{"n":"Paulo César Caju","nat":"Brasil","pos":"Ponta","dec":1970,"cl":["Botafogo","Flamengo"]},{"n":"Clodoaldo","nat":"Brasil","pos":"Meia","dec":1960,"cl":["Santos"],"ach":["wc1970"]},{"n":"Marco Antônio","nat":"Brasil","pos":"Lateral","dec":1970,"cl":["Fluminense"],"ach":["wc1970"]},{"n":"Toninho Cerezo","nat":"Brasil","pos":"Meia","dec":1970,"cl":["Atlético-MG","Roma"]},{"n":"Júnior","nat":"Brasil","pos":"Lateral","dec":1970,"cl":["Flamengo","Torino"]},{"n":"Éder","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["Atlético-MG","Grêmio"]},{"n":"Serginho Chulapa","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["São Paulo","Santos"]},{"n":"Renato Gaúcho","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["Grêmio","Fluminense"]},{"n":"Careca","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["Guarani","São Paulo","Napoli"]},{"n":"Casagrande","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["Corinthians","Torino"]},{"n":"Müller (São Paulo)","nat":"Brasil","pos":"Atacante","dec":1980,"cl":["São Paulo"]},{"n":"Branco","nat":"Brasil","pos":"Lateral","dec":1980,"cl":["Grêmio","Porto"],"ach":["wc1994"]},{"n":"Dunga","nat":"Brasil","pos":"Meia","dec":1980,"cl":["Internacional","Fiorentina"],"ach":["wc1994"]},{"n":"Mauro Silva","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Bragantino","Deportivo"],"ach":["wc1994"]},{"n":"Zinho","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Flamengo","Palmeiras"],"ach":["wc1994"]},{"n":"Jorginho","nat":"Brasil","pos":"Lateral","dec":1990,"cl":["Flamengo","Bayern de Munique"],"ach":["wc1994"]},{"n":"Aldair","nat":"Brasil","pos":"Zagueiro","dec":1990,"cl":["Benfica","Roma"],"ach":["wc1994"]},{"n":"Márcio Santos","nat":"Brasil","pos":"Zagueiro","dec":1990,"cl":["Internacional","Bordeaux"],"ach":["wc1994"]},{"n":"Leonardo","nat":"Brasil","pos":"Meia","dec":1990,"cl":["São Paulo","Milan","PSG"],"ach":["wc1994"]},{"n":"Juninho Paulista","nat":"Brasil","pos":"Meia","dec":1990,"cl":["São Paulo","Middlesbrough"],"ach":["wc2002"]},{"n":"Sávio","nat":"Brasil","pos":"Ponta","dec":1990,"cl":["Flamengo","Real Madrid"]},{"n":"Edílson","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Corinthians","Flamengo"],"ach":["wc2002"]},{"n":"Vampeta","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Corinthians","PSG"],"ach":["wc2002"]},{"n":"Belletti","nat":"Brasil","pos":"Lateral","dec":1990,"cl":["São Paulo","Barcelona"],"ach":["wc2002"]},{"n":"Edmílson","nat":"Brasil","pos":"Zagueiro","dec":1990,"cl":["Lyon","Barcelona"],"ach":["wc2002"]},{"n":"Roque Júnior","nat":"Brasil","pos":"Zagueiro","dec":1990,"cl":["Palmeiras","Milan"],"ach":["wc2002"]},{"n":"Gilberto Silva","nat":"Brasil","pos":"Meia","dec":2000,"cl":["Atlético-MG","Arsenal"],"ach":["wc2002"]},{"n":"Juan","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Flamengo","Roma"]},{"n":"Gilberto","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Internacional","Tottenham"]},{"n":"Cris","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Cruzeiro","Lyon"]},{"n":"Luisão","nat":"Brasil","pos":"Zagueiro","dec":2000,"cl":["Cruzeiro","Benfica"]},{"n":"Maxwell","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Ajax","Barcelona","PSG"]},{"n":"Grafite","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["São Paulo","Wolfsburg"]},{"n":"Diego Ribas","nat":"Brasil","pos":"Meia","dec":2000,"cl":["Santos","Werder Bremen","Flamengo"]},{"n":"Alexandre Pato","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Internacional","Milan"]},{"n":"Hulk","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Porto","Zenit","Atlético-MG"]},{"n":"Willian","nat":"Brasil","pos":"Ponta","dec":2000,"cl":["Shakhtar","Chelsea"]},{"n":"Oscar","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Internacional","Chelsea"]},{"n":"Fernandinho","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Shakhtar","Manchester City"]},{"n":"Douglas Costa","nat":"Brasil","pos":"Ponta","dec":2010,"cl":["Shakhtar","Bayern de Munique","Juventus"]},{"n":"Firmino","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Hoffenheim","Liverpool"]},{"n":"Richarlison","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Watford","Everton","Tottenham"]},{"n":"Antony","nat":"Brasil","pos":"Ponta","dec":2010,"cl":["Ajax","Manchester United"]},{"n":"Bruno Guimarães","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Athletico","Lyon","Newcastle"]},{"n":"Éder Militão","nat":"Brasil","pos":"Zagueiro","dec":2010,"cl":["São Paulo","Porto","Real Madrid"]},{"n":"Gabriel Magalhães","nat":"Brasil","pos":"Zagueiro","dec":2010,"cl":["Lille","Arsenal"]},{"n":"Lucas Paquetá","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Flamengo","Milan","West Ham"]},{"n":"Raphinha","nat":"Brasil","pos":"Ponta","dec":2010,"cl":["Leeds","Barcelona"]},{"n":"Endrick","nat":"Brasil","pos":"Atacante","dec":2020,"cl":["Palmeiras","Real Madrid"]},{"n":"Gabigol","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Santos","Inter de Milão","Flamengo"],"ach":["liberta"]},{"n":"Pedro","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Fluminense","Flamengo"],"ach":["liberta"]},{"n":"Everton Ribeiro","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Cruzeiro","Flamengo"],"ach":["liberta"]},{"n":"Bruno Henrique","nat":"Brasil","pos":"Atacante","dec":2010,"cl":["Santos","Flamengo"],"ach":["liberta"]},{"n":"Weverton","nat":"Brasil","pos":"Goleiro","dec":2010,"cl":["Atlético-PR","Palmeiras"]},{"n":"Cássio","nat":"Brasil","pos":"Goleiro","dec":2010,"cl":["Corinthians"]},{"n":"Fábio","nat":"Brasil","pos":"Goleiro","dec":2000,"cl":["Cruzeiro","Fluminense"]},{"n":"Rogério Ceni","nat":"Brasil","pos":"Goleiro","dec":1990,"cl":["São Paulo"]},{"n":"Marcos","nat":"Brasil","pos":"Goleiro","dec":1990,"cl":["Palmeiras"],"ach":["wc2002"]},{"n":"Emerson","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Bayer Leverkusen","Roma","Juventus"]},{"n":"Zé Roberto","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Bayern de Munique","Palmeiras"]},{"n":"Denílson","nat":"Brasil","pos":"Ponta","dec":1990,"cl":["São Paulo","Betis"],"ach":["wc2002"]},{"n":"Viola","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Corinthians"]},{"n":"Túlio Maravilha","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Botafogo"]},{"n":"Sonny Anderson","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Monaco","Barcelona","Lyon"]},{"n":"Giovane Élber","nat":"Brasil","pos":"Atacante","dec":1990,"cl":["Stuttgart","Bayern de Munique"]},{"n":"Aílton","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Werder Bremen"]},{"n":"Marcelinho Carioca","nat":"Brasil","pos":"Meia","dec":1990,"cl":["Corinthians"]},{"n":"Diego Tardelli","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Atlético-MG"]},{"n":"Ricardo Oliveira","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Santos","Betis"]},{"n":"Luís Fabiano","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["São Paulo","Sevilla"]},{"n":"Vágner Love","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["CSKA Moscou","Flamengo"]},{"n":"Jô","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Corinthians","CSKA Moscou"]},{"n":"Nilmar","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Internacional","Villarreal"]},{"n":"Fred","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Fluminense","Lyon"]},{"n":"Diego Souza","nat":"Brasil","pos":"Meia","dec":2000,"cl":["Sport","Botafogo"]},{"n":"Paulinho","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Corinthians","Tottenham","Barcelona"]},{"n":"Renato Augusto","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Flamengo","Corinthians"]},{"n":"Elias","nat":"Brasil","pos":"Meia","dec":2000,"cl":["Corinthians","Atlético-MG"]},{"n":"Ralf","nat":"Brasil","pos":"Meia","dec":2010,"cl":["Corinthians"]},{"n":"Léo Moura","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Flamengo"]},{"n":"Filipe Luís","nat":"Brasil","pos":"Lateral","dec":2000,"cl":["Atlético de Madrid","Chelsea","Flamengo"]},{"n":"Alex Sandro","nat":"Brasil","pos":"Lateral","dec":2010,"cl":["Porto","Juventus"]},{"n":"Danilo","nat":"Brasil","pos":"Lateral","dec":2010,"cl":["Santos","Real Madrid","Juventus"]},{"n":"Miranda","nat":"Brasil","pos":"Zagueiro","dec":2010,"cl":["São Paulo","Atlético de Madrid","Inter de Milão"]},{"n":"Marquinhos","nat":"Brasil","pos":"Zagueiro","dec":2010,"cl":["Roma","PSG"]},{"n":"Estêvão","nat":"Brasil","pos":"Ponta","dec":2020,"cl":["Palmeiras","Chelsea"]},{"n":"Vitor Roque","nat":"Brasil","pos":"Atacante","dec":2020,"cl":["Athletico","Barcelona"]},{"n":"André","nat":"Brasil","pos":"Meia","dec":2020,"cl":["Fluminense"]},{"n":"John Kennedy","nat":"Brasil","pos":"Atacante","dec":2020,"cl":["Fluminense"]},{"n":"Washington","nat":"Brasil","pos":"Atacante","dec":2000,"cl":["Athletico","Fluminense"]},{"n":"Dodô","nat":"Brasil","pos":"Lateral","dec":2010,"cl":["Coritiba","Fiorentina"]},{"n":"Wendell","nat":"Brasil","pos":"Lateral","dec":2010,"cl":["Palmeiras","Bayer Leverkusen","Porto"]},{"n":"Igor Jesus","nat":"Brasil","pos":"Atacante","dec":2020,"cl":["Botafogo"]},{"n":"Savinho","nat":"Brasil","pos":"Ponta","dec":2020,"cl":["Atlético-MG","Manchester City"]},{"n":"Wesley França","nat":"Brasil","pos":"Lateral","dec":2020,"cl":["Flamengo"]},{"n":"Heung-min Son","nat":"Coreia do Sul","pos":"Ponta","dec":2010,"cl":["Bayer Leverkusen","Tottenham"]}];
+const ACH_LABELS={"wc2002":"Campeão da Copa de 2002","wc1994":"Campeão da Copa de 1994","wc1970":"Campeão da Copa de 1970","wc1958":"Campeão da Copa de 1958","wc2006":"Campeão da Copa de 2006","wc2010":"Campeão da Copa de 2010","wc2014":"Campeão da Copa de 2014","ballon":"Vencedor da Bola de Ouro","ucl":"Campeão da Champions League","euro":"Campeão da Eurocopa","liberta":"Campeão da Libertadores"};
+// ── Liga dos Craques — game logic ──
+const EPOCH=new Date(2025,0,1);
+function dayIndex(){const now=new Date();const t=new Date(now.getFullYear(),now.getMonth(),now.getDate());return Math.floor((t-EPOCH)/86400000);}
+function todayKey(){return "liga_"+dayIndex();}
+
+// seeded RNG (mulberry32)
+function rng(seed){let a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function shuffle(arr,rand){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rand()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// category helpers
+function catsOf(p){
+  const c=[["nat",p.nat],["pos",p.pos],["dec",p.dec]];
+  p.cl.forEach(cl=>c.push(["club",cl]));
+  if(p.ach)p.ach.forEach(a=>c.push(["ach",a]));
+  return c;
+}
+function catKey(c){return c[0]+":"+c[1];}
+function catLabel(c){
+  const t=c[0],v=c[1];
+  if(t==="nat")return v;
+  if(t==="pos")return v+"s";
+  if(t==="dec")return "Década de "+v;
+  if(t==="club")return "Jogou no "+v;
+  if(t==="ach")return ACH_LABELS[v]||v;
+  return v;
+}
+
+// Build the daily puzzle: 4 groups of 4, each player in exactly one group.
+function buildPuzzle(seed){
+  const rand=rng(seed);
+  // index players by category
+  const catMap={};
+  ROSTER.forEach((p,i)=>{catsOf(p).forEach(c=>{const k=catKey(c);(catMap[k]=catMap[k]||{cat:c,idx:[]}).idx.push(i);});});
+  let viable=Object.values(catMap).filter(o=>o.idx.length>=4);
+  // shuffle viable category order deterministically
+  viable=shuffle(viable,rand);
+  const groups=[]; const used=new Set();
+  for(const v of viable){
+    if(groups.length===4)break;
+    const pool=v.idx.filter(i=>!used.has(i));
+    if(pool.length<4)continue;
+    const pick=shuffle(pool,rand).slice(0,4);
+    groups.push({cat:v.cat,label:catLabel(v.cat),players:pick});
+    pick.forEach(i=>used.add(i));
+  }
+  if(groups.length<4)return buildPuzzle(seed+1); // extremely unlikely; reseed
+  return groups;
+}
+
+// ── state ──
+let puzzle, tiles, selected, mistakes, solved, over, won, guessHistory, soundOn=true;
+const MAX_MISTAKES=4;
+const GROUP_CLASS=["sg1","sg2","sg3","sg4"];
+const GROUP_EMOJI=["🟨","🟩","🟦","🟥"];
+
+let mode="daily", infRound=0, currentSeed=0;
+function init(){
+  try{soundOn=localStorage.getItem("liga_sound")!=="0";}catch(e){}
+  updateSoundBtn();
+  startGame(dayIndex(),"daily");
+  maybeOnboard();
+}
+function startGame(seed,gameMode){
+  mode=gameMode;
+  currentSeed=seed;
+  puzzle=buildPuzzle(seed);
+  // flatten tiles: {pi: player index, g: group index}
+  tiles=[];
+  puzzle.forEach((g,gi)=>g.players.forEach(pi=>tiles.push({pi,g:gi})));
+  const ord=shuffle(tiles.map((_,i)=>i),rng(seed*7+13));
+  tiles=ord.map(i=>tiles[i]);
+  selected=[]; mistakes=0; solved=[]; over=false; won=false; guessHistory=[];
+  // reset UI
+  document.getElementById("play-controls").style.display="block";
+  document.getElementById("result").classList.remove("show");
+  // restore saved (daily only)
+  if(mode==="daily"){
+    try{
+      const s=JSON.parse(localStorage.getItem(todayKey())||"null");
+      if(s){solved=s.solved||[];mistakes=s.mistakes||0;guessHistory=s.guessHistory||[];
+        if(s.over){over=true;won=s.won;}}
+    }catch(e){}
+  }
+  renderSolved(); renderGrid(); renderDots();
+  if(over)finish(true);
+}
+function nextInfinite(){
+  infRound++;
+  // seed far from daily range to get fresh puzzles
+  startGame(1000000+Math.floor(Math.random()*9000000),"infinite");
+}
+
+function save(){
+  if(mode!=="daily")return; // infinite games aren't persisted
+  try{localStorage.setItem(todayKey(),JSON.stringify({solved,mistakes,guessHistory,over,won}));}catch(e){}
+}
+
+function renderGrid(){
+  const grid=document.getElementById("grid");
+  grid.innerHTML="";
+  // tiles still in play (not in a solved group)
+  const solvedG=new Set(solved.map(s=>s.g));
+  tiles.forEach((t,ti)=>{
+    if(solvedG.has(t.g))return; // already solved, shown above
+    const el=document.createElement("div");
+    el.className="tile"+(selected.includes(ti)?" sel":"");
+    el.textContent=ROSTER[t.pi].n;
+    el.onclick=()=>toggleTile(ti);
+    el.dataset.ti=ti;
+    grid.appendChild(el);
+  });
+}
+
+function renderSolved(){
+  const box=document.getElementById("solved-groups");
+  box.innerHTML="";
+  solved.forEach(s=>{
+    const g=puzzle[s.g];
+    const div=document.createElement("div");
+    div.className="solved-group "+GROUP_CLASS[s.g];
+    div.innerHTML='<div class="cat">'+g.label+'</div><div class="members">'+g.players.map(pi=>ROSTER[pi].n).join(" · ")+'</div>';
+    box.appendChild(div);
+  });
+}
+
+function renderDots(){
+  const d=document.getElementById("dots");
+  d.innerHTML="";
+  for(let i=0;i<MAX_MISTAKES;i++){
+    const dot=document.createElement("div");
+    dot.className="mdot"+(i<mistakes?" lost":"");
+    d.appendChild(dot);
+  }
+}
+
+function toggleTile(ti){
+  if(over)return;
+  const idx=selected.indexOf(ti);
+  if(idx>=0)selected.splice(idx,1);
+  else{if(selected.length>=4)return; selected.push(ti); playSound("tick");}
+  renderGrid(); updateSubmit();
+}
+function updateSubmit(){document.getElementById("btn-submit").disabled=selected.length!==4;}
+function deselectAll(){selected=[];renderGrid();updateSubmit();}
+function shuffleGrid(){
+  const solvedG=new Set(solved.map(s=>s.g));
+  const inplay=tiles.filter(t=>!solvedG.has(t.g));
+  const rest=shuffle(inplay,rng(Date.now()%100000));
+  // rebuild tiles: solved stay conceptually, reorder in-play
+  let ri=0;
+  tiles=tiles.map(t=>solvedG.has(t.g)?t:rest[ri++]);
+  selected=[]; renderGrid(); updateSubmit();
+}
+
+function submitGuess(){
+  if(selected.length!==4||over)return;
+  const groupsOfSel=selected.map(ti=>tiles[ti].g);
+  const counts={};
+  groupsOfSel.forEach(g=>counts[g]=(counts[g]||0)+1);
+  const maxSame=Math.max(...Object.values(counts));
+  // record for share grid
+  guessHistory.push(selected.map(ti=>tiles[ti].g));
+  if(maxSame===4){
+    // correct group!
+    const gi=groupsOfSel[0];
+    solved.push({g:gi});
+    selected=[]; playSound("correct");
+    renderSolved(); renderGrid(); updateSubmit(); save();
+    popSolved();
+    if(solved.length===4){won=true;finish();}
+  }else{
+    mistakes++; playSound("wrong");
+    // "one away" feedback
+    if(maxSame===3)showToast("Quase! 3 de 4 certos");
+    shakeSelected();
+    renderDots(); save();
+    if(mistakes>=MAX_MISTAKES){won=false;revealRemaining();finish();}
+  }
+}
+
+function shakeSelected(){
+  document.querySelectorAll(".tile.sel").forEach(el=>{el.classList.add("shake");setTimeout(()=>el.classList.remove("shake"),400);});
+}
+function popSolved(){
+  const box=document.getElementById("solved-groups");
+  const last=box.lastElementChild;
+  if(last){last.style.animation="none";void last.offsetWidth;last.style.animation="popIn .4s ease";}
+}
+
+function revealRemaining(){
+  // auto-solve remaining groups for display
+  const solvedG=new Set(solved.map(s=>s.g));
+  for(let g=0;g<4;g++)if(!solvedG.has(g))solved.push({g});
+  renderSolved(); renderGrid();
+}
+
+function finish(restoring){
+  over=true;
+  document.getElementById("play-controls").style.display="none";
+  const r=document.getElementById("result");
+  r.classList.add("show");
+  const v=document.getElementById("verdict");
+  v.textContent=won?"Mandou bem!":"Fim de jogo";
+  v.className="verdict "+(won?"win":"lose");
+  document.getElementById("rgrid").textContent=buildShareGrid();
+  // Replay button: always available, but labeled by context
+  const again=document.getElementById("btn-again");
+  again.style.display="inline-block";
+  again.textContent=mode==="daily"?"Jogar mais ⚽":"Próximo ⚽";
+  if(!restoring){
+    if(won)playSound("win");else playSound("lose");
+    save();
+  }
+  // Countdown only meaningful in daily mode
+  const ni=document.getElementById("next-in");
+  if(mode==="daily"){ni.style.display="block";tickCountdown();}
+  else{ni.style.display="none";if(cdTimer)clearInterval(cdTimer);}
+}
+
+function buildShareGrid(){
+  // each guess = row of 4 emojis by group
+  return guessHistory.map(row=>row.map(g=>GROUP_EMOJI[g]).join("")).join("\n");
+}
+function buildShareText(){
+  return "🏆 Liga dos Craques #"+dayIndex()+"\n"+(won?"Resolvi":"Não consegui")+" com "+mistakes+" erro(s)\n\n"+buildShareGrid()+"\n\nliga.futzone.com.br";
+}
+
+// ── share (image) ──
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function shareImage(){
+  const W=600,H=760,canvas=document.createElement("canvas");canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#0b1411";ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle="rgba(35,70,58,.5)";ctx.lineWidth=1;
+  for(let x=0;x<=W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<=H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.strokeStyle="#23463a";ctx.lineWidth=2;roundRect(ctx,16,16,W-32,H-32,18);ctx.stroke();
+  ctx.textAlign="center";
+  ctx.fillStyle="#eef3ee";ctx.font="bold 40px Arial";ctx.fillText("LIGA DOS ",W/2-40,92);
+  ctx.fillStyle="#37d98a";ctx.fillText("CRAQUES",W/2+120,92);
+  ctx.fillStyle="#7e9788";ctx.font="18px Arial";ctx.fillText("Desafio #"+dayIndex(),W/2,124);
+  ctx.fillStyle=won?"#37d98a":"#e0617f";ctx.font="bold 30px Arial";
+  ctx.fillText(won?"MANDOU BEM!":"FIM DE JOGO",W/2,180);
+  ctx.fillStyle="#cfe3d6";ctx.font="18px Arial";
+  ctx.fillText((won?"Resolvido":"Não resolvido")+" · "+mistakes+" erro(s)",W/2,212);
+  // colored grid of guesses
+  const colors=["#e8c547","#3fb56a","#5b8def","#e0617f"];
+  const cell=46,gap=8,cols=4;
+  const totalW=cols*cell+(cols-1)*gap;
+  let y=260;
+  guessHistory.forEach(row=>{
+    let x=(W-totalW)/2;
+    row.forEach(g=>{ctx.fillStyle=colors[g];roundRect(ctx,x,y,cell,cell,8);ctx.fill();x+=cell+gap;});
+    y+=cell+gap;
+  });
+  ctx.fillStyle="#7e9788";ctx.font="20px Arial";ctx.fillText("liga.futzone.com.br",W/2,H-40);
+  canvas.toBlob(blob=>{
+    if(!blob){copy(buildShareText());return;}
+    const file=new File([blob],"liga-dos-craques.png",{type:"image/png"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],text:buildShareText()}).catch(()=>dl(blob));
+    }else dl(blob);
+  },"image/png");
+}
+function dl(blob){try{const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download="liga-dos-craques.png";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000);showToast("Imagem baixada!");}catch(e){copy(buildShareText());}}
+function copy(t){try{navigator.clipboard.writeText(t).then(()=>showToast("Resultado copiado!"));}catch(e){}}
+
+// ── countdown ──
+let cdTimer=null;
+function tickCountdown(){
+  const el=document.getElementById("next-in");if(!el)return;
+  function upd(){const now=new Date();const t=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1)-now;
+    const h=Math.floor(t/3600000),m=Math.floor(t%3600000/60000),s=Math.floor(t%60000/1000);
+    el.textContent="Próximo desafio em "+String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");}
+  upd();if(cdTimer)clearInterval(cdTimer);cdTimer=setInterval(upd,1000);
+}
+
+// ── sound ──
+let actx=null;
+function playSound(type){
+  if(!soundOn)return;
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const o=actx.createOscillator(),g=actx.createGain();o.connect(g);g.connect(actx.destination);
+    const f={tick:520,correct:660,wrong:180,win:780,lose:140}[type]||440;
+    o.frequency.value=f;o.type=type==="wrong"||type==="lose"?"sawtooth":"sine";
+    g.gain.setValueAtTime(.0001,actx.currentTime);g.gain.exponentialRampToValueAtTime(.12,actx.currentTime+.01);
+    g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.25);
+    o.start();o.stop(actx.currentTime+.26);
+  }catch(e){}
+}
+function toggleSound(){soundOn=!soundOn;try{localStorage.setItem("liga_sound",soundOn?"1":"0");}catch(e){}updateSoundBtn();if(soundOn)playSound("correct");}
+function updateSoundBtn(){const b=document.getElementById("btn-sound");if(b)b.textContent=soundOn?"🔊":"🔇";}
+
+// ── modals ──
+function openModal(html){document.getElementById("modal-content").innerHTML=html;document.getElementById("overlay").classList.add("show");}
+function closeModal(){document.getElementById("overlay").classList.remove("show");}
+function closeModalBg(e){if(e.target.id==="overlay")closeModal();}
+function showHelp(){
+  openModal('<button class="close" onclick="closeModal()">×</button><h2>🏆 Como jogar</h2>'
+    +'<p>Há <b>16 craques</b> na grade, que formam <b>4 grupos secretos</b> de 4.</p>'
+    +'<p>Cada grupo tem uma conexão: mesma <b>posição</b>, <b>país</b>, <b>década</b> ou um <b>clube</b> em comum.</p>'
+    +'<p>Toque em 4 nomes e confirme. Acertou o grupo? Ele sai da grade. Errou? Perde uma vida.</p>'
+    +'<p>Cuidado: alguns craques parecem caber em vários grupos — essa é a pegadinha! Você tem <b>4 erros</b>.</p>'
+    +'<p>Um desafio novo a cada dia.</p>');
+}
+function maybeOnboard(){
+  let seen=false;try{seen=localStorage.getItem("liga_onboarded")==="1";}catch(e){}
+  if(seen)return;
+  openModal('<button class="close" onclick="finishOnboard()">×</button>'
+    +'<div style="text-align:center;margin-bottom:6px;"><div style="font-family:\'Oswald\',sans-serif;font-size:13px;letter-spacing:3px;color:#7e9788;">BEM-VINDO À</div>'
+    +'<div style="font-family:\'Oswald\',sans-serif;font-size:26px;font-weight:700;">LIGA DOS <span style="color:#37d98a">CRAQUES</span></div></div>'
+    +'<p style="margin-top:14px;"><b>🎯 Objetivo:</b> achar os 4 grupos secretos de craques.</p>'
+    +'<p><b>👆 Como:</b> toque em 4 nomes que têm algo em comum (país, posição, década ou clube) e confirme.</p>'
+    +'<p><b>⚠️ Atenção:</b> alguns nomes parecem caber em vários grupos. Você tem só 4 erros.</p>'
+    +'<button class="onb-cta" onclick="finishOnboard()">Começar ⚽</button>');
+}
+function finishOnboard(){try{localStorage.setItem("liga_onboarded","1");}catch(e){}closeModal();}
+
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),1800);}
+
+document.getElementById("share").addEventListener("click",()=>{try{shareImage();}catch(e){copy(buildShareText());}});
+
+init();
+if("serviceWorker" in navigator && location.protocol.startsWith("http")){navigator.serviceWorker.register("./sw.js").catch(()=>{});}
+</script>
+</body>
+</html>
