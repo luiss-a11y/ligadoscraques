@@ -444,32 +444,67 @@ function buildShareText(){
 // ── share (image) ──
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function shareImage(){
-  const W=600,H=760,canvas=document.createElement("canvas");canvas.width=W;canvas.height=H;
+  const W=600,H=800,canvas=document.createElement("canvas");canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext("2d");
+  // bg + grid
   ctx.fillStyle="#0b1411";ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle="rgba(35,70,58,.5)";ctx.lineWidth=1;
+  ctx.strokeStyle="rgba(35,70,58,.45)";ctx.lineWidth=1;
   for(let x=0;x<=W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   for(let y=0;y<=H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
   ctx.strokeStyle="#23463a";ctx.lineWidth=2;roundRect(ctx,16,16,W-32,H-32,18);ctx.stroke();
   ctx.textAlign="center";
-  ctx.fillStyle="#eef3ee";ctx.font="bold 40px Arial";ctx.fillText("LIGA DOS ",W/2-40,92);
-  ctx.fillStyle="#37d98a";ctx.fillText("CRAQUES",W/2+120,92);
-  ctx.fillStyle="#7e9788";ctx.font="18px Arial";ctx.fillText("Desafio #"+dayIndex(),W/2,124);
-  ctx.fillStyle=won?"#37d98a":"#e0617f";ctx.font="bold 30px Arial";
-  ctx.fillText(won?"MANDOU BEM!":"FIM DE JOGO",W/2,180);
-  ctx.fillStyle="#cfe3d6";ctx.font="18px Arial";
-  ctx.fillText((won?"Resolvido":"Não resolvido")+" · "+mistakes+" erro(s)",W/2,212);
-  // colored grid of guesses
+
+  // ── title: measured two-tone so "DOS" and "CRAQUES" never overlap ──
+  ctx.font="bold 42px Arial";
+  const t1="LIGA DOS ", t2="CRAQUES";
+  const w1=ctx.measureText(t1).width, w2=ctx.measureText(t2).width;
+  const totalT=w1+w2, startX=(W-totalT)/2;
+  ctx.textAlign="left";
+  ctx.fillStyle="#eef3ee";ctx.fillText(t1,startX,94);
+  ctx.fillStyle="#37d98a";ctx.fillText(t2,startX+w1,94);
+  ctx.textAlign="center";
+  ctx.fillStyle="#7e9788";ctx.font="18px Arial";ctx.fillText("Desafio #"+dayIndex(),W/2,126);
+
+  // ── verdict ──
+  ctx.fillStyle=won?"#37d98a":"#e0617f";ctx.font="bold 32px Arial";
+  ctx.fillText(won?"MANDOU BEM!":"FIM DE JOGO",W/2,178);
+  ctx.fillStyle="#cfe3d6";ctx.font="17px Arial";
+  ctx.fillText((won?"Resolvido":"Não resolvido")+" · "+mistakes+" de 4 erros",W/2,206);
+
+  // ── the 4 connections (themes only, no player names = no spoiler) ──
   const colors=["#e8c547","#3fb56a","#5b8def","#e0617f"];
-  const cell=46,gap=8,cols=4;
-  const totalW=cols*cell+(cols-1)*gap;
-  let y=260;
+  const dark=["#3a3210","#0f2a1a","#11203c","#341019"];
+  let y=246;const barH=54,barGap=12,barW=W-100;
+  ctx.fillStyle="#7e9788";ctx.font="13px Arial";ctx.fillText("AS 4 CONEXÕES DE HOJE",W/2,y);y+=22;
+  puzzle.forEach((g,gi)=>{
+    const x=(W-barW)/2;
+    ctx.fillStyle=dark[gi];roundRect(ctx,x,y,barW,barH,12);ctx.fill();
+    ctx.strokeStyle=colors[gi];ctx.lineWidth=1.5;roundRect(ctx,x,y,barW,barH,12);ctx.stroke();
+    // color dot
+    ctx.fillStyle=colors[gi];ctx.beginPath();ctx.arc(x+26,y+barH/2,9,0,Math.PI*2);ctx.fill();
+    // connection label (centered vertically), truncated to fit
+    ctx.fillStyle="#eef3ee";ctx.font="bold 20px Arial";ctx.textAlign="left";
+    let label=g.label;
+    while(ctx.measureText(label).width>barW-70 && label.length>6){label=label.slice(0,-2);}
+    if(label!==g.label)label=label.trim()+"…";
+    ctx.fillText(label,x+46,y+barH/2+7);
+    ctx.textAlign="center";
+    y+=barH+barGap;
+  });
+
+  // ── attempts grid (the journey, spoiler-free) ──
+  y+=8;
+  ctx.fillStyle="#7e9788";ctx.font="13px Arial";ctx.fillText("SUAS TENTATIVAS",W/2,y);y+=20;
+  const cell=30,gap=6,cols=4,gridW=cols*cell+(cols-1)*gap;
   guessHistory.forEach(row=>{
-    let x=(W-totalW)/2;
-    row.forEach(g=>{ctx.fillStyle=colors[g];roundRect(ctx,x,y,cell,cell,8);ctx.fill();x+=cell+gap;});
+    let x=(W-gridW)/2;
+    row.forEach(g=>{ctx.fillStyle=colors[g];roundRect(ctx,x,y,cell,cell,6);ctx.fill();x+=cell+gap;});
     y+=cell+gap;
   });
-  ctx.fillStyle="#7e9788";ctx.font="20px Arial";ctx.fillText("ligadoscraques.futzone.com.br",W/2,H-40);
+
+  // ── footer ──
+  ctx.fillStyle="#37d98a";ctx.font="bold 19px Arial";ctx.fillText("ligadoscraques.futzone.com.br",W/2,H-36);
+
   canvas.toBlob(blob=>{
     if(!blob){copy(buildShareText());return;}
     const file=new File([blob],"liga-dos-craques.png",{type:"image/png"});
